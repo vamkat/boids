@@ -10,6 +10,7 @@ use macroquad::prelude::*;
 ///
 /// Macroquad's visible window starts at `(0, 0)` in the top-left corner.
 pub const SCREEN_MIN: f32 = 0.0;
+pub const BASE_MULTIPLIER: f32 = 1.0;
 
 // Default simulation values. Keep these private so the rest of the code goes
 // through `Config`, which is the future live-tuning surface.
@@ -19,7 +20,7 @@ const DEFAULT_MIN_INITIAL_SPEED_FACTOR: f32 = 0.4;
 const DEFAULT_BOID_SIZE: f32 = 7.0;
 const DEFAULT_BOID_WING_ANGLE: f32 = 2.5;
 const DEFAULT_EDGE_MARGIN: f32 = 200.0;
-const DEFAULT_EDGE_AVOIDANCE_FORCE: f32 = 0.01;
+const DEFAULT_EDGE_AVOIDANCE_FORCE: f32 = 0.05;
 const DEFAULT_SEPARATION_RADIUS: f32 = 30.0;
 const DEFAULT_SEPARATION_FORCE: f32 = 0.85;
 const DEFAULT_ALIGNMENT_RADIUS: f32 = 55.0;
@@ -28,6 +29,9 @@ const DEFAULT_COHESION_RADIUS: f32 = 70.0;
 const DEFAULT_COHESION_FORCE: f32 = 0.03;
 const DEFAULT_WANDER_FORCE: f32 = 0.015;
 const DEFAULT_WANDER_TURN_RATE: f32 = 0.05;
+const DEFAULT_SPEED_VARIATION: f32 = 0.52;
+const DEFAULT_FORCE_VARIATION: f32 = 0.30;
+const DEFAULT_SIZE_VARIATION: f32 = 0.10;
 const DEFAULT_BOUNDARY_MODE: BoundaryMode = BoundaryMode::AvoidEdges;
 
 // Color channels are named separately so the default color has no anonymous
@@ -110,6 +114,18 @@ pub struct Config {
     /// frame.
     pub wander_turn_rate: f32,
 
+    /// Per-boid speed variation around `1.0`.
+    ///
+    /// A value of `0.12` gives each boid a speed multiplier in the range
+    /// `0.88..1.12` when it is created.
+    pub speed_variation: f32,
+
+    /// Per-boid steering-force variation around `1.0`.
+    pub force_variation: f32,
+
+    /// Per-boid rendered-size variation around `1.0`.
+    pub size_variation: f32,
+
     /// Current boundary behavior.
     pub boundary_mode: BoundaryMode,
 
@@ -139,6 +155,9 @@ impl Default for Config {
             cohesion_force: DEFAULT_COHESION_FORCE,
             wander_force: DEFAULT_WANDER_FORCE,
             wander_turn_rate: DEFAULT_WANDER_TURN_RATE,
+            speed_variation: DEFAULT_SPEED_VARIATION,
+            force_variation: DEFAULT_FORCE_VARIATION,
+            size_variation: DEFAULT_SIZE_VARIATION,
             boundary_mode: DEFAULT_BOUNDARY_MODE,
             background_color: DEFAULT_BACKGROUND_COLOR,
             boid_color: DEFAULT_BOID_COLOR,

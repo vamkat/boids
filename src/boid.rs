@@ -5,7 +5,38 @@
 
 use macroquad::prelude::*;
 
-use crate::config::{Config, SCREEN_MIN};
+use crate::config::{BASE_MULTIPLIER, Config, SCREEN_MIN};
+
+/// Stable per-boid variation applied to shared config values.
+///
+/// These multipliers are chosen once at spawn time. They keep individual boids
+/// from behaving identically without adding frame-to-frame noise.
+#[derive(Clone, Copy)]
+struct Traits {
+    speed_multiplier: f32,
+    separation_multiplier: f32,
+    alignment_multiplier: f32,
+    cohesion_multiplier: f32,
+    edge_avoidance_multiplier: f32,
+    wander_multiplier: f32,
+    size_multiplier: f32,
+}
+
+impl Traits {
+    /// Creates randomized trait multipliers from the configured variation
+    /// ranges.
+    fn random(config: &Config) -> Self {
+        Self {
+            speed_multiplier: random_multiplier(config.speed_variation),
+            separation_multiplier: random_multiplier(config.force_variation),
+            alignment_multiplier: random_multiplier(config.force_variation),
+            cohesion_multiplier: random_multiplier(config.force_variation),
+            edge_avoidance_multiplier: random_multiplier(config.force_variation),
+            wander_multiplier: random_multiplier(config.force_variation),
+            size_multiplier: random_multiplier(config.size_variation),
+        }
+    }
+}
 
 /// A single simulated boid.
 ///
@@ -25,6 +56,9 @@ pub struct Boid {
 
     /// Internal direction used for smooth random steering.
     wander_angle: f32,
+
+    /// Individualized behavior multipliers for this boid.
+    traits: Traits,
 }
 
 impl Boid {
@@ -38,10 +72,9 @@ impl Boid {
             rand::gen_range(SCREEN_MIN, bounds.y),
         );
         let angle = rand::gen_range(SCREEN_MIN, std::f32::consts::TAU);
-        let speed = rand::gen_range(
-            config.max_speed * config.min_initial_speed_factor,
-            config.max_speed,
-        );
+        let traits = Traits::random(config);
+        let max_speed = config.max_speed * traits.speed_multiplier;
+        let speed = rand::gen_range(max_speed * config.min_initial_speed_factor, max_speed);
         // A unit vector from the angle gives direction; multiplying by speed
         // turns it into a velocity vector.
         let velocity = vec2(angle.cos(), angle.sin()) * speed;
@@ -53,6 +86,7 @@ impl Boid {
             velocity,
             acceleration,
             wander_angle,
+            traits,
         }
     }
 
@@ -88,7 +122,10 @@ impl Boid {
 
         if neighbors > usize::default() {
             steering /= neighbors as f32;
-            self.apply_force(limit_vector(steering, config.separation_force));
+            self.apply_force(limit_vector(
+                steering,
+                config.separation_force * self.traits.separation_multiplier,
+            ));
         }
     }
 
@@ -124,9 +161,12 @@ impl Boid {
             // toward the neighbors' average heading. The desired velocity uses
             // `max_speed` so mixed neighbor speeds do not accidentally slow the
             // boid down.
-            let desired_velocity = average_velocity.normalize() * config.max_speed;
+            let desired_velocity = average_velocity.normalize() * self.max_speed(config);
             let steering = desired_velocity - self.velocity;
-            self.apply_force(limit_vector(steering, config.alignment_force));
+            self.apply_force(limit_vector(
+                steering,
+                config.alignment_force * self.traits.alignment_multiplier,
+            ));
         }
     }
 
@@ -161,9 +201,12 @@ impl Boid {
                 return;
             }
 
-            let desired_velocity = desired_direction.normalize() * config.max_speed;
+            let desired_velocity = desired_direction.normalize() * self.max_speed(config);
             let steering = desired_velocity - self.velocity;
-            self.apply_force(limit_vector(steering, config.cohesion_force));
+            self.apply_force(limit_vector(
+                steering,
+                config.cohesion_force * self.traits.cohesion_multiplier,
+            ));
         }
     }
 
@@ -179,7 +222,9 @@ impl Boid {
 
         self.wander_angle += rand::gen_range(-config.wander_turn_rate, config.wander_turn_rate);
 
-        let force = vec2(self.wander_angle.cos(), self.wander_angle.sin()) * config.wander_force;
+        let force = vec2(self.wander_angle.cos(), self.wander_angle.sin())
+            * config.wander_force
+            * self.traits.wander_multiplier;
         self.apply_force(force);
     }
 
@@ -198,9 +243,10 @@ impl Boid {
         // right edge.
         if self.position.x < config.edge_margin {
             force.x +=
-                config.edge_avoidance_force * edge_proximity(self.position.x, config.edge_margin);
+                self.edge_avoidance_force(config)
+                    * edge_proximity(self.position.x, config.edge_margin);
         } else if self.position.x > bounds.x - config.edge_margin {
-            force.x -= config.edge_avoidance_force
+            force.x -= self.edge_avoidance_force(config)
                 * edge_proximity(bounds.x - self.position.x, config.edge_margin);
         }
 
@@ -208,9 +254,10 @@ impl Boid {
         // bottom edge. In screen coordinates, positive y points downward.
         if self.position.y < config.edge_margin {
             force.y +=
-                config.edge_avoidance_force * edge_proximity(self.position.y, config.edge_margin);
+                self.edge_avoidance_force(config)
+                    * edge_proximity(self.position.y, config.edge_margin);
         } else if self.position.y > bounds.y - config.edge_margin {
-            force.y -= config.edge_avoidance_force
+            force.y -= self.edge_avoidance_force(config)
                 * edge_proximity(bounds.y - self.position.y, config.edge_margin);
         }
 
@@ -223,7 +270,7 @@ impl Boid {
     /// with a fresh set of steering forces.
     pub fn update(&mut self, config: &Config) {
         self.velocity += self.acceleration;
-        self.limit_speed(config.max_speed);
+        self.limit_speed(self.max_speed(config));
         self.position += self.velocity;
         self.acceleration = Vec2::ZERO;
     }
@@ -245,18 +292,19 @@ impl Boid {
 
     /// Draws this boid as a triangle pointing in its velocity direction.
     pub fn draw(&self, config: &Config) {
+        let boid_size = config.boid_size * self.traits.size_multiplier;
         let heading = self.velocity.to_angle();
-        let nose = self.position + vec2(heading.cos(), heading.sin()) * config.boid_size;
+        let nose = self.position + vec2(heading.cos(), heading.sin()) * boid_size;
         let left = self.position
             + vec2(
                 (heading + config.boid_wing_angle).cos(),
                 (heading + config.boid_wing_angle).sin(),
-            ) * config.boid_size;
+            ) * boid_size;
         let right = self.position
             + vec2(
                 (heading - config.boid_wing_angle).cos(),
                 (heading - config.boid_wing_angle).sin(),
-            ) * config.boid_size;
+            ) * boid_size;
 
         draw_triangle(nose, left, right, config.boid_color);
     }
@@ -264,6 +312,17 @@ impl Boid {
     /// Caps velocity magnitude without changing travel direction.
     fn limit_speed(&mut self, max_speed: f32) {
         self.velocity = limit_vector(self.velocity, max_speed);
+    }
+
+    /// Maximum speed for this boid after applying its individual speed trait.
+    fn max_speed(&self, config: &Config) -> f32 {
+        config.max_speed * self.traits.speed_multiplier
+    }
+
+    /// Edge avoidance force for this boid after applying its individual force
+    /// trait.
+    fn edge_avoidance_force(&self, config: &Config) -> f32 {
+        config.edge_avoidance_force * self.traits.edge_avoidance_multiplier
     }
 }
 
@@ -281,4 +340,12 @@ fn limit_vector(vector: Vec2, max_length: f32) -> Vec2 {
     } else {
         vector
     }
+}
+
+/// Returns a random multiplier in the range `1.0 - variation` to
+/// `1.0 + variation`.
+fn random_multiplier(variation: f32) -> f32 {
+    let variation = variation.max(SCREEN_MIN);
+
+    rand::gen_range(BASE_MULTIPLIER - variation, BASE_MULTIPLIER + variation)
 }
