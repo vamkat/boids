@@ -43,6 +43,10 @@ const DEFAULT_SPEED_VARIATION: f32 = 0.52;
 const DEFAULT_FORCE_VARIATION: f32 = 0.30;
 const DEFAULT_SIZE_VARIATION: f32 = 0.10;
 const DEFAULT_BOUNDARY_MODE: BoundaryMode = BoundaryMode::AvoidEdges;
+const DEFAULT_TRAILS_ENABLED: bool = true;
+const DEFAULT_TRAIL_LENGTH: usize = 45;
+const DEFAULT_TRAIL_THICKNESS: f32 = 1.0;
+const DEFAULT_TRAIL_OPACITY: f32 = 0.35;
 
 // Color channels are named separately so the default color has no anonymous
 // numeric literals in its construction.
@@ -60,8 +64,7 @@ const DEFAULT_BACKGROUND_COLOR: Color = Color {
 const DEFAULT_BOID_COLOR: Color = WHITE;
 
 /// Strategy used when boids approach or cross the window boundary.
-#[allow(dead_code)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum BoundaryMode {
     /// Teleport boids from one side of the screen to the opposite side.
     Wrap,
@@ -162,6 +165,18 @@ pub struct Config {
     /// Current boundary behavior.
     pub boundary_mode: BoundaryMode,
 
+    /// Whether boids draw their recent flight path.
+    pub trails_enabled: bool,
+
+    /// Number of past positions kept per boid for its trail.
+    pub trail_length: usize,
+
+    /// Line width used to draw trail segments.
+    pub trail_thickness: f32,
+
+    /// Overall opacity of trails, scaling the per-segment age fade.
+    pub trail_opacity: f32,
+
     /// Color used to clear the frame before drawing boids.
     pub background_color: Color,
 
@@ -195,6 +210,10 @@ impl Default for Config {
             force_variation: DEFAULT_FORCE_VARIATION,
             size_variation: DEFAULT_SIZE_VARIATION,
             boundary_mode: DEFAULT_BOUNDARY_MODE,
+            trails_enabled: DEFAULT_TRAILS_ENABLED,
+            trail_length: DEFAULT_TRAIL_LENGTH,
+            trail_thickness: DEFAULT_TRAIL_THICKNESS,
+            trail_opacity: DEFAULT_TRAIL_OPACITY,
             background_color: DEFAULT_BACKGROUND_COLOR,
             boid_color: DEFAULT_BOID_COLOR,
         }

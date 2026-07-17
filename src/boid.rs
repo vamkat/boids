@@ -396,6 +396,11 @@ impl Boid {
         draw_triangle(nose, left, right, config.boid_color);
     }
 
+    /// Current position in screen coordinates.
+    pub fn position(&self) -> Vec2 {
+        self.position
+    }
+
     /// Unit vector along this boid's travel direction, or `None` when it is
     /// moving too slowly for that direction to be meaningful.
     ///
