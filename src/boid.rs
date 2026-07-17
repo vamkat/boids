@@ -87,6 +87,44 @@ impl Boid {
         }
     }
 
+    /// Applies the alignment rule against nearby boids.
+    ///
+    /// Alignment steers this boid toward the average velocity of neighbors
+    /// within `alignment_radius`. This changes heading, not position directly.
+    pub fn align(&mut self, flock: &[Boid], config: &Config) {
+        if config.alignment_radius <= SCREEN_MIN {
+            return;
+        }
+
+        let mut average_velocity = Vec2::ZERO;
+        let mut neighbors = usize::default();
+
+        for other in flock {
+            let distance = self.position.distance(other.position);
+
+            if distance > f32::EPSILON && distance < config.alignment_radius {
+                average_velocity += other.velocity;
+                neighbors += 1;
+            }
+        }
+
+        if neighbors > usize::default() {
+            average_velocity /= neighbors as f32;
+
+            if average_velocity.length() <= f32::EPSILON {
+                return;
+            }
+
+            // Steering is the change needed to move from the current velocity
+            // toward the neighbors' average heading. The desired velocity uses
+            // `max_speed` so mixed neighbor speeds do not accidentally slow the
+            // boid down.
+            let desired_velocity = average_velocity.normalize() * config.max_speed;
+            let steering = desired_velocity - self.velocity;
+            self.apply_force(limit_vector(steering, config.alignment_force));
+        }
+    }
+
     /// Applies a steering force away from the window edges.
     ///
     /// The force starts at zero at `edge_margin` and ramps up as the boid gets

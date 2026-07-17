@@ -22,6 +22,8 @@ const DEFAULT_EDGE_MARGIN: f32 = 50.0;
 const DEFAULT_EDGE_AVOIDANCE_FORCE: f32 = 0.15;
 const DEFAULT_SEPARATION_RADIUS: f32 = 50.0;
 const DEFAULT_SEPARATION_FORCE: f32 = 0.15;
+const DEFAULT_ALIGNMENT_RADIUS: f32 = 55.0;
+const DEFAULT_ALIGNMENT_FORCE: f32 = 0.01;
 
 // Color channels are named separately so the default color has no anonymous
 // numeric literals in its construction.
@@ -73,6 +75,12 @@ pub struct Config {
     /// Maximum steering force used to move away from nearby boids.
     pub separation_force: f32,
 
+    /// Neighbor distance where heading matching begins.
+    pub alignment_radius: f32,
+
+    /// Maximum steering force used to match nearby boid headings.
+    pub alignment_force: f32,
+
     /// Color used to clear the frame before drawing boids.
     pub background_color: Color,
 
@@ -93,6 +101,8 @@ impl Default for Config {
             edge_avoidance_force: DEFAULT_EDGE_AVOIDANCE_FORCE,
             separation_radius: DEFAULT_SEPARATION_RADIUS,
             separation_force: DEFAULT_SEPARATION_FORCE,
+            alignment_radius: DEFAULT_ALIGNMENT_RADIUS,
+            alignment_force: DEFAULT_ALIGNMENT_FORCE,
             background_color: DEFAULT_BACKGROUND_COLOR,
             boid_color: DEFAULT_BOID_COLOR,
         }

@@ -38,6 +38,7 @@ impl Simulation {
 
         for boid in &mut self.boids {
             boid.separate(&flock_snapshot, &self.config);
+            boid.align(&flock_snapshot, &self.config);
             boid.avoid_edges(bounds, &self.config);
             boid.update(&self.config);
             boid.draw(&self.config);
