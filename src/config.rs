@@ -20,6 +20,8 @@ const DEFAULT_BOID_SIZE: f32 = 7.0;
 const DEFAULT_BOID_WING_ANGLE: f32 = 2.5;
 const DEFAULT_EDGE_MARGIN: f32 = 50.0;
 const DEFAULT_EDGE_AVOIDANCE_FORCE: f32 = 0.15;
+const DEFAULT_SEPARATION_RADIUS: f32 = 50.0;
+const DEFAULT_SEPARATION_FORCE: f32 = 0.15;
 
 // Color channels are named separately so the default color has no anonymous
 // numeric literals in its construction.
@@ -65,6 +67,12 @@ pub struct Config {
     /// Maximum steering force applied when a boid reaches the window edge.
     pub edge_avoidance_force: f32,
 
+    /// Neighbor distance where separation steering begins.
+    pub separation_radius: f32,
+
+    /// Maximum steering force used to move away from nearby boids.
+    pub separation_force: f32,
+
     /// Color used to clear the frame before drawing boids.
     pub background_color: Color,
 
@@ -83,6 +91,8 @@ impl Default for Config {
             boid_wing_angle: DEFAULT_BOID_WING_ANGLE,
             edge_margin: DEFAULT_EDGE_MARGIN,
             edge_avoidance_force: DEFAULT_EDGE_AVOIDANCE_FORCE,
+            separation_radius: DEFAULT_SEPARATION_RADIUS,
+            separation_force: DEFAULT_SEPARATION_FORCE,
             background_color: DEFAULT_BACKGROUND_COLOR,
             boid_color: DEFAULT_BOID_COLOR,
         }

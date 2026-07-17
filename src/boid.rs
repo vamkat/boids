@@ -12,6 +12,7 @@ use crate::config::{Config, SCREEN_MIN};
 /// The movement model uses the standard position/velocity/acceleration split:
 /// forces accumulate into acceleration for one frame, acceleration changes
 /// velocity, and velocity changes position.
+#[derive(Clone, Copy)]
 pub struct Boid {
     /// Current position in screen coordinates.
     position: Vec2,
@@ -56,6 +57,34 @@ impl Boid {
     /// avoidance, separation, alignment, and cohesion will all use this path.
     pub fn apply_force(&mut self, force: Vec2) {
         self.acceleration += force;
+    }
+
+    /// Applies the separation rule against nearby boids.
+    ///
+    /// Separation pushes this boid away from neighbors within
+    /// `separation_radius`. Closer neighbors contribute a stronger push.
+    pub fn separate(&mut self, flock: &[Boid], config: &Config) {
+        if config.separation_radius <= SCREEN_MIN {
+            return;
+        }
+
+        let mut steering = Vec2::ZERO;
+        let mut neighbors = usize::default();
+
+        for other in flock {
+            let offset = self.position - other.position;
+            let distance = offset.length();
+
+            if distance > f32::EPSILON && distance < config.separation_radius {
+                steering += offset.normalize() / distance;
+                neighbors += 1;
+            }
+        }
+
+        if neighbors > usize::default() {
+            steering /= neighbors as f32;
+            self.apply_force(limit_vector(steering, config.separation_force));
+        }
     }
 
     /// Applies a steering force away from the window edges.
@@ -123,9 +152,7 @@ impl Boid {
 
     /// Caps velocity magnitude without changing travel direction.
     fn limit_speed(&mut self, max_speed: f32) {
-        if self.velocity.length() > max_speed {
-            self.velocity = self.velocity.normalize() * max_speed;
-        }
+        self.velocity = limit_vector(self.velocity, max_speed);
     }
 }
 
@@ -134,4 +161,13 @@ impl Boid {
 /// The result is `0.0` at the margin boundary and `1.0` at the window edge.
 fn edge_proximity(distance_from_edge: f32, margin: f32) -> f32 {
     (margin - distance_from_edge).max(SCREEN_MIN) / margin
+}
+
+/// Caps a vector's magnitude while preserving its direction.
+fn limit_vector(vector: Vec2, max_length: f32) -> Vec2 {
+    if vector.length() > max_length {
+        vector.normalize() * max_length
+    } else {
+        vector
+    }
 }

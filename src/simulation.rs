@@ -32,10 +32,12 @@ impl Simulation {
     /// Runs one frame of simulation and rendering.
     pub fn tick(&mut self) {
         let bounds = screen_bounds();
+        let flock_snapshot = self.boids.clone();
 
         clear_background(self.config.background_color);
 
         for boid in &mut self.boids {
+            boid.separate(&flock_snapshot, &self.config);
             boid.avoid_edges(bounds, &self.config);
             boid.update(&self.config);
             boid.draw(&self.config);
