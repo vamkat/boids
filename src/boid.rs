@@ -377,23 +377,33 @@ impl Boid {
         }
     }
 
-    /// Draws this boid as a triangle pointing in its velocity direction.
+    /// Draws this boid as a swept, bird-like arrowhead pointing along its
+    /// velocity.
+    ///
+    /// The shape is two triangles sharing the nose: the wingtips sweep back from
+    /// the heading, and a tail notch sits behind the body but in front of the
+    /// wingtips. That concave rear edge is what distinguishes the silhouette from
+    /// a plain triangle and gives the sense of swept wings.
     pub fn draw(&self, config: &Config) {
         let boid_size = config.boid_size * self.traits.size_multiplier;
         let heading = self.velocity.to_angle();
-        let nose = self.position + vec2(heading.cos(), heading.sin()) * boid_size;
-        let left = self.position
-            + vec2(
-                (heading + config.boid_wing_angle).cos(),
-                (heading + config.boid_wing_angle).sin(),
-            ) * boid_size;
-        let right = self.position
-            + vec2(
-                (heading - config.boid_wing_angle).cos(),
-                (heading - config.boid_wing_angle).sin(),
-            ) * boid_size;
 
-        draw_triangle(nose, left, right, config.boid_color);
+        let point_at = |angle: f32, radius: f32| {
+            self.position + vec2(angle.cos(), angle.sin()) * radius
+        };
+
+        let nose = point_at(heading, boid_size);
+        let left = point_at(heading + config.boid_wing_angle, boid_size);
+        let right = point_at(heading - config.boid_wing_angle, boid_size);
+        // Behind the body, opposite the nose, but only part of the way out so the
+        // rear edge caves inward between the wingtips.
+        let tail = point_at(
+            heading + std::f32::consts::PI,
+            boid_size * config.boid_notch,
+        );
+
+        draw_triangle(nose, left, tail, config.boid_color);
+        draw_triangle(nose, right, tail, config.boid_color);
     }
 
     /// Current position in screen coordinates.

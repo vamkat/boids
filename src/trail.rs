@@ -81,8 +81,8 @@ impl Trail {
             // one meets the boid at full opacity.
             let age_fraction = (index + 1) as f32 / segments;
             let color = Color {
-                a: config.boid_color.a * age_fraction * config.trail_opacity,
-                ..config.boid_color
+                a: config.trail_color.a * age_fraction * config.trail_opacity,
+                ..config.trail_color
             };
 
             draw_line(from.x, from.y, to.x, to.y, config.trail_thickness, color);

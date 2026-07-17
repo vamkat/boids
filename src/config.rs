@@ -20,10 +20,18 @@ pub const HALF: f32 = 0.5;
 const DEFAULT_BOID_COUNT: usize = 80;
 const DEFAULT_MAX_SPEED: f32 = 2.5;
 const DEFAULT_MIN_INITIAL_SPEED_FACTOR: f32 = 0.4;
-const DEFAULT_BOID_SIZE: f32 = 7.0;
-const DEFAULT_BOID_WING_ANGLE: f32 = 2.5;
+const DEFAULT_BOID_SIZE: f32 = 8.0;
+// Wings swept well back from the nose give a slim, dart-like silhouette.
+const DEFAULT_BOID_WING_ANGLE: f32 = 2.6;
+// Depth of the concave tail notch, as a fraction of `boid_size`. A value between
+// zero and one keeps the notch behind the body but in front of the wingtips, so
+// the rear edge reads as a bird's swept tail rather than a flat triangle base.
+const DEFAULT_BOID_NOTCH: f32 = 0.55;
 const DEFAULT_EDGE_MARGIN: f32 = 200.0;
-const DEFAULT_EDGE_AVOIDANCE_FORCE: f32 = 0.05;
+// Strong enough that a fast boid entering the margin is reliably turned before
+// it reaches the actual edge. The earlier default was too weak to overcome
+// cohesion pulling boids toward a flock centered off screen.
+const DEFAULT_EDGE_AVOIDANCE_FORCE: f32 = 0.4;
 const DEFAULT_SEPARATION_RADIUS: f32 = 30.0;
 const DEFAULT_SEPARATION_FORCE: f32 = 0.85;
 const DEFAULT_ALIGNMENT_RADIUS: f32 = 55.0;
@@ -44,9 +52,23 @@ const DEFAULT_FORCE_VARIATION: f32 = 0.30;
 const DEFAULT_SIZE_VARIATION: f32 = 0.10;
 const DEFAULT_BOUNDARY_MODE: BoundaryMode = BoundaryMode::AvoidEdges;
 const DEFAULT_TRAILS_ENABLED: bool = true;
-const DEFAULT_TRAIL_LENGTH: usize = 45;
+const DEFAULT_TRAIL_LENGTH: usize = 90;
 const DEFAULT_TRAIL_THICKNESS: f32 = 1.0;
-const DEFAULT_TRAIL_OPACITY: f32 = 0.35;
+const DEFAULT_TRAIL_OPACITY: f32 = 0.4;
+
+// A cool cyan reads clearly against the white boids and the near-black
+// background.
+const DEFAULT_TRAIL_RED: f32 = 0.3;
+const DEFAULT_TRAIL_GREEN: f32 = 0.7;
+const DEFAULT_TRAIL_BLUE: f32 = 1.0;
+const DEFAULT_TRAIL_ALPHA: f32 = 1.0;
+
+const DEFAULT_TRAIL_COLOR: Color = Color {
+    r: DEFAULT_TRAIL_RED,
+    g: DEFAULT_TRAIL_GREEN,
+    b: DEFAULT_TRAIL_BLUE,
+    a: DEFAULT_TRAIL_ALPHA,
+};
 
 // Color channels are named separately so the default color has no anonymous
 // numeric literals in its construction.
@@ -92,9 +114,14 @@ pub struct Config {
     /// Radius-like size used to draw each boid triangle.
     pub boid_size: f32,
 
-    /// Angle offset, in radians, from the boid heading to each rear triangle
-    /// point.
+    /// Angle offset, in radians, from the boid heading to each rear wingtip.
     pub boid_wing_angle: f32,
+
+    /// Depth of the concave tail notch, as a fraction of `boid_size`.
+    ///
+    /// Zero gives a flat-backed triangle; larger values pull the rear center
+    /// point forward, carving the swept tail that makes the boid read as a bird.
+    pub boid_notch: f32,
 
     /// Distance from each window edge where edge avoidance begins.
     pub edge_margin: f32,
@@ -177,6 +204,9 @@ pub struct Config {
     /// Overall opacity of trails, scaling the per-segment age fade.
     pub trail_opacity: f32,
 
+    /// Color used to draw trails, independent of the boid color.
+    pub trail_color: Color,
+
     /// Color used to clear the frame before drawing boids.
     pub background_color: Color,
 
@@ -193,6 +223,7 @@ impl Default for Config {
             min_initial_speed_factor: DEFAULT_MIN_INITIAL_SPEED_FACTOR,
             boid_size: DEFAULT_BOID_SIZE,
             boid_wing_angle: DEFAULT_BOID_WING_ANGLE,
+            boid_notch: DEFAULT_BOID_NOTCH,
             edge_margin: DEFAULT_EDGE_MARGIN,
             edge_avoidance_force: DEFAULT_EDGE_AVOIDANCE_FORCE,
             separation_radius: DEFAULT_SEPARATION_RADIUS,
@@ -214,6 +245,7 @@ impl Default for Config {
             trail_length: DEFAULT_TRAIL_LENGTH,
             trail_thickness: DEFAULT_TRAIL_THICKNESS,
             trail_opacity: DEFAULT_TRAIL_OPACITY,
+            trail_color: DEFAULT_TRAIL_COLOR,
             background_color: DEFAULT_BACKGROUND_COLOR,
             boid_color: DEFAULT_BOID_COLOR,
         }

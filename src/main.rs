@@ -17,8 +17,8 @@ use simulation::Simulation;
 ///
 /// The window is deliberately wide: the control panel occupies a reserved column
 /// on the right, so the boids need the extra room to keep a large play area.
-const WINDOW_WIDTH: i32 = 1600;
-const WINDOW_HEIGHT: i32 = 1000;
+const WINDOW_WIDTH: i32 = 1280;
+const WINDOW_HEIGHT: i32 = 800;
 
 /// Window configuration applied before the simulation starts.
 fn window_conf() -> Conf {

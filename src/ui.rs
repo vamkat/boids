@@ -104,6 +104,7 @@ fn panel_body(ui: &mut Ui, config: &mut Config) -> ControlOutcome {
     slide_usize(ui, hash!(), "count", 0.0..400.0, &mut config.boid_count);
     ui.slider(hash!(), "max speed", 0.5..8.0, &mut config.max_speed);
     ui.slider(hash!(), "size", 1.0..20.0, &mut config.boid_size);
+    ui.slider(hash!(), "tail notch", 0.0..1.0, &mut config.boid_notch);
 
     section(ui, "Separation");
     ui.slider(hash!(), "radius", 0.0..120.0, &mut config.separation_radius);
@@ -133,7 +134,7 @@ fn panel_body(ui: &mut Ui, config: &mut Config) -> ControlOutcome {
         BoundaryMode::AvoidEdges
     };
     ui.slider(hash!(), "margin", 0.0..400.0, &mut config.edge_margin);
-    ui.slider(hash!(), "avoid force", 0.0..0.3, &mut config.edge_avoidance_force);
+    ui.slider(hash!(), "avoid force", 0.0..1.0, &mut config.edge_avoidance_force);
 
     section(ui, "Variation");
     ui.slider(hash!(), "speed", 0.0..1.0, &mut config.speed_variation);
@@ -142,7 +143,7 @@ fn panel_body(ui: &mut Ui, config: &mut Config) -> ControlOutcome {
 
     section(ui, "Trails");
     ui.checkbox(hash!(), "enabled", &mut config.trails_enabled);
-    slide_usize(ui, hash!(), "length", 0.0..200.0, &mut config.trail_length);
+    slide_usize(ui, hash!(), "length", 0.0..600.0, &mut config.trail_length);
     ui.slider(hash!(), "thickness", 0.5..5.0, &mut config.trail_thickness);
     ui.slider(hash!(), "opacity", 0.0..1.0, &mut config.trail_opacity);
     if ui.button(None, "Clear trails") {
@@ -151,6 +152,7 @@ fn panel_body(ui: &mut Ui, config: &mut Config) -> ControlOutcome {
 
     section(ui, "Color");
     color_sliders(ui, "boid", &mut config.boid_color);
+    color_sliders(ui, "trail", &mut config.trail_color);
     color_sliders(ui, "bg", &mut config.background_color);
 
     outcome
