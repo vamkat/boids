@@ -5,6 +5,7 @@ use crate::config::{Config, SCREEN_MIN};
 pub struct Boid {
     position: Vec2,
     velocity: Vec2,
+    acceleration: Vec2,
 }
 
 impl Boid {
@@ -19,12 +20,26 @@ impl Boid {
             config.max_speed,
         );
         let velocity = vec2(angle.cos(), angle.sin()) * speed;
+        let acceleration = Vec2::ZERO;
 
-        Self { position, velocity }
+        Self {
+            position,
+            velocity,
+            acceleration,
+        }
     }
 
-    pub fn update(&mut self, bounds: Vec2) {
+    #[allow(dead_code)]
+    pub fn apply_force(&mut self, force: Vec2) {
+        self.acceleration += force;
+    }
+
+    pub fn update(&mut self, bounds: Vec2, config: &Config) {
+        self.velocity += self.acceleration;
+        self.limit_speed(config.max_speed);
         self.position += self.velocity;
+        self.acceleration = Vec2::ZERO;
+
         self.wrap_edges(bounds);
     }
 
@@ -56,6 +71,12 @@ impl Boid {
             self.position.y = bounds.y;
         } else if self.position.y > bounds.y {
             self.position.y = SCREEN_MIN;
+        }
+    }
+
+    fn limit_speed(&mut self, max_speed: f32) {
+        if self.velocity.length() > max_speed {
+            self.velocity = self.velocity.normalize() * max_speed;
         }
     }
 }

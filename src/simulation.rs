@@ -25,7 +25,7 @@ impl Simulation {
         clear_background(self.config.background_color);
 
         for boid in &mut self.boids {
-            boid.update(bounds);
+            boid.update(bounds, &self.config);
             boid.draw(&self.config);
         }
     }
