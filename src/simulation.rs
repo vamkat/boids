@@ -6,7 +6,7 @@
 use macroquad::prelude::*;
 
 use crate::boid::Boid;
-use crate::config::Config;
+use crate::config::{BoundaryMode, Config};
 
 /// Running simulation state.
 pub struct Simulation {
@@ -39,8 +39,18 @@ impl Simulation {
         for boid in &mut self.boids {
             boid.separate(&flock_snapshot, &self.config);
             boid.align(&flock_snapshot, &self.config);
-            boid.avoid_edges(bounds, &self.config);
+            boid.cohere(&flock_snapshot, &self.config);
+
+            if let BoundaryMode::AvoidEdges = self.config.boundary_mode {
+                boid.avoid_edges(bounds, &self.config);
+            }
+
             boid.update(&self.config);
+
+            if let BoundaryMode::Wrap = self.config.boundary_mode {
+                boid.wrap_edges(bounds);
+            }
+
             boid.draw(&self.config);
         }
     }

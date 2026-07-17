@@ -125,6 +125,43 @@ impl Boid {
         }
     }
 
+    /// Applies the cohesion rule against nearby boids.
+    ///
+    /// Cohesion steers this boid toward the average position of neighbors
+    /// within `cohesion_radius`. This is the rule that turns nearby individuals
+    /// into visible groups.
+    pub fn cohere(&mut self, flock: &[Boid], config: &Config) {
+        if config.cohesion_radius <= SCREEN_MIN {
+            return;
+        }
+
+        let mut average_position = Vec2::ZERO;
+        let mut neighbors = usize::default();
+
+        for other in flock {
+            let distance = self.position.distance(other.position);
+
+            if distance > f32::EPSILON && distance < config.cohesion_radius {
+                average_position += other.position;
+                neighbors += 1;
+            }
+        }
+
+        if neighbors > usize::default() {
+            average_position /= neighbors as f32;
+
+            let desired_direction = average_position - self.position;
+
+            if desired_direction.length() <= f32::EPSILON {
+                return;
+            }
+
+            let desired_velocity = desired_direction.normalize() * config.max_speed;
+            let steering = desired_velocity - self.velocity;
+            self.apply_force(limit_vector(steering, config.cohesion_force));
+        }
+    }
+
     /// Applies a steering force away from the window edges.
     ///
     /// The force starts at zero at `edge_margin` and ramps up as the boid gets
@@ -168,6 +205,21 @@ impl Boid {
         self.limit_speed(config.max_speed);
         self.position += self.velocity;
         self.acceleration = Vec2::ZERO;
+    }
+
+    /// Wraps this boid to the opposite side after it crosses a screen edge.
+    pub fn wrap_edges(&mut self, bounds: Vec2) {
+        if self.position.x < SCREEN_MIN {
+            self.position.x = bounds.x;
+        } else if self.position.x > bounds.x {
+            self.position.x = SCREEN_MIN;
+        }
+
+        if self.position.y < SCREEN_MIN {
+            self.position.y = bounds.y;
+        } else if self.position.y > bounds.y {
+            self.position.y = SCREEN_MIN;
+        }
     }
 
     /// Draws this boid as a triangle pointing in its velocity direction.

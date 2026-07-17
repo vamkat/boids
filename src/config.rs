@@ -24,6 +24,9 @@ const DEFAULT_SEPARATION_RADIUS: f32 = 50.0;
 const DEFAULT_SEPARATION_FORCE: f32 = 0.15;
 const DEFAULT_ALIGNMENT_RADIUS: f32 = 55.0;
 const DEFAULT_ALIGNMENT_FORCE: f32 = 0.01;
+const DEFAULT_COHESION_RADIUS: f32 = 90.0;
+const DEFAULT_COHESION_FORCE: f32 = 0.006;
+const DEFAULT_BOUNDARY_MODE: BoundaryMode = BoundaryMode::Wrap;
 
 // Color channels are named separately so the default color has no anonymous
 // numeric literals in its construction.
@@ -39,6 +42,17 @@ const DEFAULT_BACKGROUND_COLOR: Color = Color {
     a: DEFAULT_BACKGROUND_ALPHA,
 };
 const DEFAULT_BOID_COLOR: Color = WHITE;
+
+/// Strategy used when boids approach or cross the window boundary.
+#[allow(dead_code)]
+#[derive(Clone, Copy)]
+pub enum BoundaryMode {
+    /// Teleport boids from one side of the screen to the opposite side.
+    Wrap,
+
+    /// Steer boids away from edges before they leave the screen.
+    AvoidEdges,
+}
 
 /// Tunable parameters for a running boid simulation.
 ///
@@ -81,6 +95,15 @@ pub struct Config {
     /// Maximum steering force used to match nearby boid headings.
     pub alignment_force: f32,
 
+    /// Neighbor distance where attraction toward local group centers begins.
+    pub cohesion_radius: f32,
+
+    /// Maximum steering force used to move toward nearby boid groups.
+    pub cohesion_force: f32,
+
+    /// Current boundary behavior.
+    pub boundary_mode: BoundaryMode,
+
     /// Color used to clear the frame before drawing boids.
     pub background_color: Color,
 
@@ -103,6 +126,9 @@ impl Default for Config {
             separation_force: DEFAULT_SEPARATION_FORCE,
             alignment_radius: DEFAULT_ALIGNMENT_RADIUS,
             alignment_force: DEFAULT_ALIGNMENT_FORCE,
+            cohesion_radius: DEFAULT_COHESION_RADIUS,
+            cohesion_force: DEFAULT_COHESION_FORCE,
+            boundary_mode: DEFAULT_BOUNDARY_MODE,
             background_color: DEFAULT_BACKGROUND_COLOR,
             boid_color: DEFAULT_BOID_COLOR,
         }
