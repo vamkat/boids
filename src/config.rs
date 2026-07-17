@@ -18,15 +18,17 @@ const DEFAULT_MAX_SPEED: f32 = 2.5;
 const DEFAULT_MIN_INITIAL_SPEED_FACTOR: f32 = 0.4;
 const DEFAULT_BOID_SIZE: f32 = 7.0;
 const DEFAULT_BOID_WING_ANGLE: f32 = 2.5;
-const DEFAULT_EDGE_MARGIN: f32 = 50.0;
-const DEFAULT_EDGE_AVOIDANCE_FORCE: f32 = 0.15;
-const DEFAULT_SEPARATION_RADIUS: f32 = 50.0;
-const DEFAULT_SEPARATION_FORCE: f32 = 0.15;
+const DEFAULT_EDGE_MARGIN: f32 = 200.0;
+const DEFAULT_EDGE_AVOIDANCE_FORCE: f32 = 0.01;
+const DEFAULT_SEPARATION_RADIUS: f32 = 30.0;
+const DEFAULT_SEPARATION_FORCE: f32 = 0.85;
 const DEFAULT_ALIGNMENT_RADIUS: f32 = 55.0;
-const DEFAULT_ALIGNMENT_FORCE: f32 = 0.01;
-const DEFAULT_COHESION_RADIUS: f32 = 90.0;
-const DEFAULT_COHESION_FORCE: f32 = 0.006;
-const DEFAULT_BOUNDARY_MODE: BoundaryMode = BoundaryMode::Wrap;
+const DEFAULT_ALIGNMENT_FORCE: f32 = 0.02;
+const DEFAULT_COHESION_RADIUS: f32 = 70.0;
+const DEFAULT_COHESION_FORCE: f32 = 0.03;
+const DEFAULT_WANDER_FORCE: f32 = 0.015;
+const DEFAULT_WANDER_TURN_RATE: f32 = 0.05;
+const DEFAULT_BOUNDARY_MODE: BoundaryMode = BoundaryMode::AvoidEdges;
 
 // Color channels are named separately so the default color has no anonymous
 // numeric literals in its construction.
@@ -101,6 +103,13 @@ pub struct Config {
     /// Maximum steering force used to move toward nearby boid groups.
     pub cohesion_force: f32,
 
+    /// Continuous steering force that prevents perfectly uniform motion.
+    pub wander_force: f32,
+
+    /// Maximum random angle change applied to each boid's wander direction per
+    /// frame.
+    pub wander_turn_rate: f32,
+
     /// Current boundary behavior.
     pub boundary_mode: BoundaryMode,
 
@@ -128,6 +137,8 @@ impl Default for Config {
             alignment_force: DEFAULT_ALIGNMENT_FORCE,
             cohesion_radius: DEFAULT_COHESION_RADIUS,
             cohesion_force: DEFAULT_COHESION_FORCE,
+            wander_force: DEFAULT_WANDER_FORCE,
+            wander_turn_rate: DEFAULT_WANDER_TURN_RATE,
             boundary_mode: DEFAULT_BOUNDARY_MODE,
             background_color: DEFAULT_BACKGROUND_COLOR,
             boid_color: DEFAULT_BOID_COLOR,

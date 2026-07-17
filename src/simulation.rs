@@ -40,6 +40,7 @@ impl Simulation {
             boid.separate(&flock_snapshot, &self.config);
             boid.align(&flock_snapshot, &self.config);
             boid.cohere(&flock_snapshot, &self.config);
+            boid.wander(&self.config);
 
             if let BoundaryMode::AvoidEdges = self.config.boundary_mode {
                 boid.avoid_edges(bounds, &self.config);

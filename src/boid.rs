@@ -22,6 +22,9 @@ pub struct Boid {
 
     /// Sum of steering forces waiting to be applied on the next update.
     acceleration: Vec2,
+
+    /// Internal direction used for smooth random steering.
+    wander_angle: f32,
 }
 
 impl Boid {
@@ -43,11 +46,13 @@ impl Boid {
         // turns it into a velocity vector.
         let velocity = vec2(angle.cos(), angle.sin()) * speed;
         let acceleration = Vec2::ZERO;
+        let wander_angle = rand::gen_range(SCREEN_MIN, std::f32::consts::TAU);
 
         Self {
             position,
             velocity,
             acceleration,
+            wander_angle,
         }
     }
 
@@ -160,6 +165,22 @@ impl Boid {
             let steering = desired_velocity - self.velocity;
             self.apply_force(limit_vector(steering, config.cohesion_force));
         }
+    }
+
+    /// Applies a small, smoothly changing random steering force.
+    ///
+    /// Wander keeps the flock from settling into a perfectly regular spacing
+    /// and heading. The force direction changes gradually because it is based on
+    /// an angle stored by the boid instead of a fresh random vector each frame.
+    pub fn wander(&mut self, config: &Config) {
+        if config.wander_force <= SCREEN_MIN || config.wander_turn_rate <= SCREEN_MIN {
+            return;
+        }
+
+        self.wander_angle += rand::gen_range(-config.wander_turn_rate, config.wander_turn_rate);
+
+        let force = vec2(self.wander_angle.cos(), self.wander_angle.sin()) * config.wander_force;
+        self.apply_force(force);
     }
 
     /// Applies a steering force away from the window edges.
