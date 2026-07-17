@@ -35,6 +35,10 @@ const DEFAULT_COHESION_FORCE: f32 = 0.03;
 const DEFAULT_FOV_ANGLE: f32 = std::f32::consts::TAU * 0.75;
 const DEFAULT_WANDER_FORCE: f32 = 0.015;
 const DEFAULT_WANDER_TURN_RATE: f32 = 0.05;
+// These two lengths only matter as a ratio. A radius half the distance bounds
+// wander steering to 30 degrees off the heading.
+const DEFAULT_WANDER_DISTANCE: f32 = 12.0;
+const DEFAULT_WANDER_RADIUS: f32 = 6.0;
 const DEFAULT_SPEED_VARIATION: f32 = 0.52;
 const DEFAULT_FORCE_VARIATION: f32 = 0.30;
 const DEFAULT_SIZE_VARIATION: f32 = 0.10;
@@ -125,9 +129,23 @@ pub struct Config {
     /// Continuous steering force that prevents perfectly uniform motion.
     pub wander_force: f32,
 
-    /// Maximum random angle change applied to each boid's wander direction per
-    /// frame.
+    /// Maximum random angle change, in radians, applied per frame to a boid's
+    /// position on its wander ring.
     pub wander_turn_rate: f32,
+
+    /// How far ahead of a boid, along its heading, the wander ring is centered.
+    ///
+    /// Raising this relative to `wander_radius` narrows wander steering toward
+    /// the heading.
+    pub wander_distance: f32,
+
+    /// Radius of the wander ring.
+    ///
+    /// Together with `wander_distance` this bounds how far wander can deflect a
+    /// boid from its heading, to `asin(wander_radius / wander_distance)`. Values
+    /// at or above `wander_distance` remove that bound and let wander oppose the
+    /// boid's own travel.
+    pub wander_radius: f32,
 
     /// Per-boid speed variation around `1.0`.
     ///
@@ -171,6 +189,8 @@ impl Default for Config {
             fov_angle: DEFAULT_FOV_ANGLE,
             wander_force: DEFAULT_WANDER_FORCE,
             wander_turn_rate: DEFAULT_WANDER_TURN_RATE,
+            wander_distance: DEFAULT_WANDER_DISTANCE,
+            wander_radius: DEFAULT_WANDER_RADIUS,
             speed_variation: DEFAULT_SPEED_VARIATION,
             force_variation: DEFAULT_FORCE_VARIATION,
             size_variation: DEFAULT_SIZE_VARIATION,

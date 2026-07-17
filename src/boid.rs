@@ -64,9 +64,8 @@ struct Vision {
 impl Vision {
     /// Prepares the field-of-view test for `boid`.
     fn new(boid: &Boid, config: &Config) -> Self {
-        let sees_everything =
-            config.fov_angle >= std::f32::consts::TAU || boid.velocity.length() <= f32::EPSILON;
-        let heading = (!sees_everything).then(|| boid.velocity.normalize());
+        let restricts_view = config.fov_angle < std::f32::consts::TAU;
+        let heading = restricts_view.then(|| boid.heading()).flatten();
         // The configured angle spans the whole cone, so the angle from the
         // heading to its edge is half of it.
         let cone_cosine = (config.fov_angle * HALF).cos();
@@ -281,17 +280,41 @@ impl Boid {
     /// Wander keeps the flock from settling into a perfectly regular spacing
     /// and heading. The force direction changes gradually because it is based on
     /// an angle stored by the boid instead of a fresh random vector each frame.
+    ///
+    /// The stored angle picks a target point on a ring projected ahead of the
+    /// boid, and the boid steers toward that point. Centering the ring on the
+    /// heading is what keeps wander a turn: every point on it stays within
+    /// `asin(wander_radius / wander_distance)` of the direction of travel.
+    /// Steering along the stored angle directly would instead leave the force
+    /// pointing backward about half the time, braking the boid rather than
+    /// turning it.
     pub fn wander(&mut self, config: &Config) {
-        if config.wander_force <= SCREEN_MIN || config.wander_turn_rate <= SCREEN_MIN {
+        if config.wander_force <= SCREEN_MIN
+            || config.wander_turn_rate <= SCREEN_MIN
+            || config.wander_radius <= SCREEN_MIN
+        {
             return;
         }
 
         self.wander_angle += rand::gen_range(-config.wander_turn_rate, config.wander_turn_rate);
 
-        let force = vec2(self.wander_angle.cos(), self.wander_angle.sin())
-            * config.wander_force
-            * self.traits.wander_multiplier;
-        self.apply_force(force);
+        let ring_offset =
+            vec2(self.wander_angle.cos(), self.wander_angle.sin()) * config.wander_radius;
+        let to_target = match self.heading() {
+            Some(heading) => heading * config.wander_distance + ring_offset,
+            // Without a meaningful heading there is nothing to project the ring
+            // ahead of, so the ring offset alone points the boid somewhere and
+            // gets it moving again.
+            None => ring_offset,
+        };
+
+        if to_target.length() <= f32::EPSILON {
+            return;
+        }
+
+        self.apply_force(
+            to_target.normalize() * config.wander_force * self.traits.wander_multiplier,
+        );
     }
 
     /// Applies a steering force away from the window edges.
@@ -371,6 +394,15 @@ impl Boid {
             ) * boid_size;
 
         draw_triangle(nose, left, right, config.boid_color);
+    }
+
+    /// Unit vector along this boid's travel direction, or `None` when it is
+    /// moving too slowly for that direction to be meaningful.
+    ///
+    /// Normalizing a near-zero velocity yields numerical noise rather than a
+    /// heading, so callers are made to handle the degenerate case.
+    fn heading(&self) -> Option<Vec2> {
+        (self.velocity.length() > f32::EPSILON).then(|| self.velocity.normalize())
     }
 
     /// Caps velocity magnitude without changing travel direction.
