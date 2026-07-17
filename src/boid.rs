@@ -5,7 +5,7 @@
 
 use macroquad::prelude::*;
 
-use crate::config::{BASE_MULTIPLIER, Config, SCREEN_MIN};
+use crate::config::{BASE_MULTIPLIER, Config, HALF, SCREEN_MIN};
 
 /// Stable per-boid variation applied to shared config values.
 ///
@@ -34,6 +34,58 @@ impl Traits {
             edge_avoidance_multiplier: random_multiplier(config.force_variation),
             wander_multiplier: random_multiplier(config.force_variation),
             size_multiplier: random_multiplier(config.size_variation),
+        }
+    }
+}
+
+/// A boid's field-of-view test, prepared once per rule.
+///
+/// The heading and the cone's cosine threshold do not change while a rule scans
+/// the flock, so they are computed once instead of per neighbor.
+#[derive(Clone, Copy)]
+struct Vision {
+    /// Unit vector along the boid's travel direction, or `None` when the boid
+    /// sees in every direction.
+    ///
+    /// This is `None` both when the configured cone covers a full turn and when
+    /// the boid is moving too slowly for its heading to be meaningful. In the
+    /// latter case a heading would be numerical noise, so restricting vision by
+    /// it would reject neighbors at random.
+    heading: Option<Vec2>,
+
+    /// Smallest dot product, between the heading and the direction to a
+    /// neighbor, that still counts as visible.
+    ///
+    /// Comparing cosines keeps the test to a dot product per neighbor rather
+    /// than an inverse trigonometric call.
+    cone_cosine: f32,
+}
+
+impl Vision {
+    /// Prepares the field-of-view test for `boid`.
+    fn new(boid: &Boid, config: &Config) -> Self {
+        let sees_everything =
+            config.fov_angle >= std::f32::consts::TAU || boid.velocity.length() <= f32::EPSILON;
+        let heading = (!sees_everything).then(|| boid.velocity.normalize());
+        // The configured angle spans the whole cone, so the angle from the
+        // heading to its edge is half of it.
+        let cone_cosine = (config.fov_angle * HALF).cos();
+
+        Self {
+            heading,
+            cone_cosine,
+        }
+    }
+
+    /// Returns whether a neighbor lies inside the vision cone.
+    ///
+    /// `to_other` points from the viewing boid toward the neighbor and must not
+    /// be degenerate; callers already exclude zero-length offsets when they
+    /// reject a boid's comparison against itself.
+    fn sees(&self, to_other: Vec2) -> bool {
+        match self.heading {
+            Some(heading) => heading.dot(to_other.normalize()) >= self.cone_cosine,
+            None => true,
         }
     }
 }
@@ -101,21 +153,26 @@ impl Boid {
     /// Applies the separation rule against nearby boids.
     ///
     /// Separation pushes this boid away from neighbors within
-    /// `separation_radius`. Closer neighbors contribute a stronger push.
+    /// `separation_radius` that are also inside its field of view. Closer
+    /// neighbors contribute a stronger push.
     pub fn separate(&mut self, flock: &[Boid], config: &Config) {
         if config.separation_radius <= SCREEN_MIN {
             return;
         }
 
+        let vision = Vision::new(self, config);
         let mut steering = Vec2::ZERO;
         let mut neighbors = usize::default();
 
         for other in flock {
-            let offset = self.position - other.position;
-            let distance = offset.length();
+            let to_other = other.position - self.position;
+            let distance = to_other.length();
 
-            if distance > f32::EPSILON && distance < config.separation_radius {
-                steering += offset.normalize() / distance;
+            if distance > f32::EPSILON
+                && distance < config.separation_radius
+                && vision.sees(to_other)
+            {
+                steering -= to_other.normalize() / distance;
                 neighbors += 1;
             }
         }
@@ -132,19 +189,25 @@ impl Boid {
     /// Applies the alignment rule against nearby boids.
     ///
     /// Alignment steers this boid toward the average velocity of neighbors
-    /// within `alignment_radius`. This changes heading, not position directly.
+    /// within `alignment_radius` that are also inside its field of view. This
+    /// changes heading, not position directly.
     pub fn align(&mut self, flock: &[Boid], config: &Config) {
         if config.alignment_radius <= SCREEN_MIN {
             return;
         }
 
+        let vision = Vision::new(self, config);
         let mut average_velocity = Vec2::ZERO;
         let mut neighbors = usize::default();
 
         for other in flock {
-            let distance = self.position.distance(other.position);
+            let to_other = other.position - self.position;
+            let distance = to_other.length();
 
-            if distance > f32::EPSILON && distance < config.alignment_radius {
+            if distance > f32::EPSILON
+                && distance < config.alignment_radius
+                && vision.sees(to_other)
+            {
                 average_velocity += other.velocity;
                 neighbors += 1;
             }
@@ -173,20 +236,23 @@ impl Boid {
     /// Applies the cohesion rule against nearby boids.
     ///
     /// Cohesion steers this boid toward the average position of neighbors
-    /// within `cohesion_radius`. This is the rule that turns nearby individuals
-    /// into visible groups.
+    /// within `cohesion_radius` that are also inside its field of view. This is
+    /// the rule that turns nearby individuals into visible groups.
     pub fn cohere(&mut self, flock: &[Boid], config: &Config) {
         if config.cohesion_radius <= SCREEN_MIN {
             return;
         }
 
+        let vision = Vision::new(self, config);
         let mut average_position = Vec2::ZERO;
         let mut neighbors = usize::default();
 
         for other in flock {
-            let distance = self.position.distance(other.position);
+            let to_other = other.position - self.position;
+            let distance = to_other.length();
 
-            if distance > f32::EPSILON && distance < config.cohesion_radius {
+            if distance > f32::EPSILON && distance < config.cohesion_radius && vision.sees(to_other)
+            {
                 average_position += other.position;
                 neighbors += 1;
             }
@@ -242,9 +308,8 @@ impl Boid {
         // Horizontal steering: push right near the left edge, and left near the
         // right edge.
         if self.position.x < config.edge_margin {
-            force.x +=
-                self.edge_avoidance_force(config)
-                    * edge_proximity(self.position.x, config.edge_margin);
+            force.x += self.edge_avoidance_force(config)
+                * edge_proximity(self.position.x, config.edge_margin);
         } else if self.position.x > bounds.x - config.edge_margin {
             force.x -= self.edge_avoidance_force(config)
                 * edge_proximity(bounds.x - self.position.x, config.edge_margin);
@@ -253,9 +318,8 @@ impl Boid {
         // Vertical steering: push down near the top edge, and up near the
         // bottom edge. In screen coordinates, positive y points downward.
         if self.position.y < config.edge_margin {
-            force.y +=
-                self.edge_avoidance_force(config)
-                    * edge_proximity(self.position.y, config.edge_margin);
+            force.y += self.edge_avoidance_force(config)
+                * edge_proximity(self.position.y, config.edge_margin);
         } else if self.position.y > bounds.y - config.edge_margin {
             force.y -= self.edge_avoidance_force(config)
                 * edge_proximity(bounds.y - self.position.y, config.edge_margin);

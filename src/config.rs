@@ -12,6 +12,9 @@ use macroquad::prelude::*;
 pub const SCREEN_MIN: f32 = 0.0;
 pub const BASE_MULTIPLIER: f32 = 1.0;
 
+/// Fraction used to split a whole value into two equal parts.
+pub const HALF: f32 = 0.5;
+
 // Default simulation values. Keep these private so the rest of the code goes
 // through `Config`, which is the future live-tuning surface.
 const DEFAULT_BOID_COUNT: usize = 80;
@@ -27,6 +30,9 @@ const DEFAULT_ALIGNMENT_RADIUS: f32 = 55.0;
 const DEFAULT_ALIGNMENT_FORCE: f32 = 0.02;
 const DEFAULT_COHESION_RADIUS: f32 = 70.0;
 const DEFAULT_COHESION_FORCE: f32 = 0.03;
+// Three quarters of a full turn, leaving a 90 degree blind spot behind each
+// boid.
+const DEFAULT_FOV_ANGLE: f32 = std::f32::consts::TAU * 0.75;
 const DEFAULT_WANDER_FORCE: f32 = 0.015;
 const DEFAULT_WANDER_TURN_RATE: f32 = 0.05;
 const DEFAULT_SPEED_VARIATION: f32 = 0.52;
@@ -107,6 +113,15 @@ pub struct Config {
     /// Maximum steering force used to move toward nearby boid groups.
     pub cohesion_force: f32,
 
+    /// Total width, in radians, of the vision cone centered on a boid's
+    /// heading.
+    ///
+    /// Neighbors outside this cone are ignored by separation, alignment, and
+    /// cohesion. A value of `TAU` or greater disables the restriction, and a
+    /// boid moving too slowly to have a meaningful heading also sees in every
+    /// direction.
+    pub fov_angle: f32,
+
     /// Continuous steering force that prevents perfectly uniform motion.
     pub wander_force: f32,
 
@@ -153,6 +168,7 @@ impl Default for Config {
             alignment_force: DEFAULT_ALIGNMENT_FORCE,
             cohesion_radius: DEFAULT_COHESION_RADIUS,
             cohesion_force: DEFAULT_COHESION_FORCE,
+            fov_angle: DEFAULT_FOV_ANGLE,
             wander_force: DEFAULT_WANDER_FORCE,
             wander_turn_rate: DEFAULT_WANDER_TURN_RATE,
             speed_variation: DEFAULT_SPEED_VARIATION,
