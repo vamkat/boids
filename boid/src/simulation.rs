@@ -1,33 +1,32 @@
 use macroquad::prelude::*;
 
 use crate::boid::Boid;
-
-const BACKGROUND: Color = Color::new(0.02, 0.02, 0.025, 1.0);
-const BOID_COUNT: usize = 80;
-const MAX_SPEED: f32 = 2.5;
+use crate::config::Config;
 
 pub struct Simulation {
     boids: Vec<Boid>,
+    config: Config,
 }
 
 impl Simulation {
     pub fn new() -> Self {
+        let config = Config::default();
         let bounds = screen_bounds();
-        let boids = (0..BOID_COUNT)
-            .map(|_| Boid::random(bounds, MAX_SPEED))
+        let boids = (0..config.boid_count)
+            .map(|_| Boid::random(bounds, &config))
             .collect();
 
-        Self { boids }
+        Self { boids, config }
     }
 
     pub fn tick(&mut self) {
         let bounds = screen_bounds();
 
-        clear_background(BACKGROUND);
+        clear_background(self.config.background_color);
 
         for boid in &mut self.boids {
             boid.update(bounds);
-            boid.draw();
+            boid.draw(&self.config);
         }
     }
 }

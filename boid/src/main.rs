@@ -1,4 +1,5 @@
 mod boid;
+mod config;
 mod simulation;
 
 use simulation::Simulation;
