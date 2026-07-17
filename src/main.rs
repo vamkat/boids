@@ -1,3 +1,8 @@
+//! Program entry point.
+//!
+//! The main loop stays intentionally small: simulation state and behavior live in
+//! the `simulation` and `boid` modules.
+
 mod boid;
 mod config;
 mod simulation;
